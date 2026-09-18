@@ -557,6 +557,18 @@ function escapeASS(value) {
     .replace(/\n/g, '\\N');
 }
 
+/*
+ * Creates TikTok-style active-word captions.
+ *
+ * - 2-5 words per caption
+ * - Current spoken word = yellow
+ * - Other words = white
+ * - Bold
+ * - Large
+ * - Black outline
+ * - Shadow
+ * - Bottom-center positioning
+ */
 function createASS(words, start, end) {
   const header = `[Script Info]
 ScriptType: v4.00+
@@ -633,17 +645,67 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
       chunk[chunk.length - 1].end - start
     );
 
-    const text = chunk
-      .map(item => escapeASS(item.word))
-      .join(' ');
+    /*
+     * Create one ASS event for every spoken word.
+     *
+     * The complete phrase remains visible,
+     * while the currently spoken word becomes yellow.
+     */
+    for (
+      let index = 0;
+      index < chunk.length;
+      index++
+    ) {
+      const word = chunk[index];
 
-    events +=
-      `Dialogue: 0,` +
-      `${assTime(chunkStart)},` +
-      `${assTime(chunkEnd)},` +
-      `TikTok,,0,0,0,,` +
-      `{\\an2}` +
-      `${text}\n`;
+      const eventStart =
+        index === 0
+          ? chunkStart
+          : Math.max(
+              chunkStart,
+              word.start - start
+            );
+
+      const eventEnd =
+        index === chunk.length - 1
+          ? chunkEnd
+          : Math.max(
+              eventStart + 0.05,
+              chunk[index + 1].start - start
+            );
+
+      const phrase = chunk
+        .map((item, phraseIndex) => {
+          const escaped =
+            escapeASS(item.word);
+
+          /*
+           * Current spoken word:
+           * Yellow
+           *
+           * Other words:
+           * White
+           */
+          if (phraseIndex === index) {
+            return (
+              `{\\c&H00FFFF&}` +
+              escaped +
+              `{\\c&HFFFFFF&}`
+            );
+          }
+
+          return escaped;
+        })
+        .join(' ');
+
+      events +=
+        `Dialogue: 0,` +
+        `${assTime(eventStart)},` +
+        `${assTime(eventEnd)},` +
+        `TikTok,,0,0,0,,` +
+        `{\\an2}` +
+        `${phrase}\n`;
+    }
   }
 
   return header + events;
