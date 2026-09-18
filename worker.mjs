@@ -230,7 +230,7 @@ function generateCandidates(words, sourceDuration) {
         Math.max(
           0,
           Math.min(word.end, end) -
-            Math.max(word.start, start)
+          Math.max(word.start, start)
         ),
       0
     );
@@ -560,71 +560,93 @@ function escapeASS(value) {
 function createASS(words, start, end) {
   const header = `[Script Info]
 ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+ScaledBorderAndShadow: yes
+
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: TikTok,Arial,22,&H00FFFFFF,&H0000FFFF,&H00101010,&H96000000,-1,0,0,0,100,100,0,0,1,2.5,1,2,35,35,130,1
+Style: TikTok,Arial,62,&H00FFFFFF,&H0000FFFF,&H00101010,&H96000000,-1,0,0,0,100,100,0,0,1,3,2,2,70,70,250,1
+
 [Events]
 Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
 `;
 
-  const selectedWords = words.filter(
-    word =>
-      word.end > start &&
-      word.start < end
-  );
+  const selectedWords = words
+    .filter(
+      word =>
+        word.end > start &&
+        word.start < end
+    )
+    .map(word => ({
+      ...word,
+      start: Math.max(word.start, start),
+      end: Math.min(word.end, end)
+    }));
 
-  let lines = '';
+  const chunks = [];
 
-  for (
-    let index = 0;
-    index < selectedWords.length;
-    index++
-  ) {
-    const word =
-      selectedWords[index];
+  // Group captions into short, readable phrases.
+  // Target: approximately 2-5 words per caption.
+  let current = [];
 
-    const before =
-      selectedWords
-        .slice(
-          Math.max(0, index - 3),
-          index
-        )
-        .map(x =>
-          escapeASS(x.word)
-        )
-        .join(' ');
+  for (const word of selectedWords) {
+    current.push(word);
 
-    const after =
-      selectedWords
-        .slice(index + 1, index + 4)
-        .map(x =>
-          escapeASS(x.word)
-        )
-        .join(' ');
+    const text = current
+      .map(item => item.word)
+      .join(' ');
 
-    const startTime = Math.max(
-      0,
-      word.start - start
-    );
+    const duration =
+      current[current.length - 1].end -
+      current[0].start;
 
-    const endTime = Math.max(
-      startTime + 0.12,
-      word.end - start
-    );
+    const shouldBreak =
+      current.length >= 5 ||
+      duration >= 2.2 ||
+      /[.!?]$/.test(text);
 
-    lines +=
-      `Dialogue: 0,` +
-      `${assTime(startTime)},` +
-      `${assTime(endTime)},` +
-      `TikTok,,0,0,0,,` +
-      `${before} ` +
-      `{\\c&H00FFFF&}` +
-      `${escapeASS(word.word)}` +
-      `{\\c&HFFFFFF&} ` +
-      `${after}\n`;
+    if (shouldBreak) {
+      chunks.push(current);
+      current = [];
+    }
   }
 
-  return header + lines;
+  if (current.length) {
+    chunks.push(current);
+  }
+
+  let events = '';
+
+  for (const chunk of chunks) {
+    if (!chunk.length) {
+      continue;
+    }
+
+    const chunkStart = Math.max(
+      0,
+      chunk[0].start - start
+    );
+
+    const chunkEnd = Math.max(
+      chunkStart + 0.15,
+      chunk[chunk.length - 1].end - start
+    );
+
+    const text = chunk
+      .map(item => escapeASS(item.word))
+      .join(' ');
+
+    events +=
+      `Dialogue: 0,` +
+      `${assTime(chunkStart)},` +
+      `${assTime(chunkEnd)},` +
+      `TikTok,,0,0,0,,` +
+      `{\\an2}` +
+      `${text}\n`;
+  }
+
+  return header + events;
 }
 
 async function transcribe(
@@ -945,7 +967,7 @@ async function processJob(job) {
             Math.round(
               (index /
                 clips.length) *
-                25
+              25
             )
         );
 
