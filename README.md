@@ -1,20 +1,69 @@
-# YouTube clip worker
+# YTAC — YouTube TikTok Automatic Clipping
 
-Only process videos you own or have permission to repurpose.
+YTAC (YouTube TikTok Automatic Clipping) is a local, AI-powered system that automatically turns long-form YouTube videos into short-form vertical videos for TikTok, YouTube Shorts, and similar platforms.
 
-## Install
+YTAC analyzes a video's transcript and content, identifies engaging and self-contained moments, selects multiple unique clips, automatically reframes the video for vertical viewing, adds animated word-by-word captions, and renders the finished clips using FFmpeg.
 
-1. Install `yt-dlp` and put it on `PATH`.
-2. Default local mode: install `python -m pip install -r requirements-local.txt`, then pull `ollama pull qwen2.5:3b`. Copy `.env.example` to `.env` only for optional OpenAI mode.
-3. Run `node worker.mjs`.
-4. Import `n8n-workflow.json` into self-hosted n8n. Set `workerUrl` to reachable worker URL, such as `http://host.docker.internal:8787` when n8n runs in Docker on this Windows machine.
+## Current Version
 
-POST body:
+**v3.0**
 
-```json
-{ "url": "https://www.youtube.com/watch?v=...", "maxClips": 8 }
-```
+---
 
-Worker returns a job id immediately. Poll `GET /jobs/{id}` until status is `done` or `failed`. Final response has clip paths, ranks, timestamps, captions, and suggested post copy.
+## Features
 
-Default uses local Whisper plus Ollama. `OPENAI_API_KEY` stays only in worker if optional cloud mode is enabled with `AI_BACKEND=openai`.
+### AI-Powered Clip Selection
+
+YTAC uses local AI to analyze the content and identify potential high-retention moments.
+
+The selection system considers signals such as:
+
+- Strong hooks
+- Curiosity
+- Emotional moments
+- Story development
+- Revelations and payoffs
+- Practical value
+- Quotable statements
+- Strong endings
+- Self-contained context
+
+It also attempts to avoid:
+
+- Greetings
+- Introductions with little value
+- Housekeeping
+- Sponsor segments
+- Long pauses
+- Repeated information
+- Weak openings
+- Clips that depend heavily on missing context
+
+---
+
+### Multiple Unique Clips
+
+YTAC can generate multiple clips from a single source video.
+
+The system attempts to:
+
+- Find as many worthwhile clips as possible
+- Avoid unnecessary filler
+- Avoid overlapping clips
+- Prefer stronger clips when candidates overlap
+- Keep clips within the target short-form duration
+
+Default target:
+
+**45–60 seconds per clip**
+
+---
+
+### Local AI
+
+YTAC is designed to run locally using Ollama.
+
+The default AI model is:
+
+```text
+qwen2.5:3b
