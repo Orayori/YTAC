@@ -1,0 +1,5 @@
+{
+  "name": "yt-clip-worker",
+  "private": true,
+  "scripts": { "start": "node worker.mjs", "check": "node --check worker.mjs" }
+}

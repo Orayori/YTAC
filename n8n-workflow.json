@@ -1,0 +1,47 @@
+{
+  "name": "YouTube to TikTok clips",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "youtube-clips", "responseMode": "responseNode", "options": {} },
+      "id": "0fdbb7c5-894f-4f1e-8dcd-e3c04d4bb3e8",
+      "name": "Receive YouTube link",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.body.workerUrl || 'http://host.docker.internal:8787' }}/jobs",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { url: $json.body.url, maxClips: $json.body.maxClips || 8 } }}",
+        "options": {}
+      },
+      "id": "40554bf2-d8ea-489c-bfdd-7ed1cefb5aaf",
+      "name": "Start clipping job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [540, 300]
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{ $json }}", "options": {} },
+      "id": "91f4dfa1-cf1a-4f3f-babe-4c78d5b2d329",
+      "name": "Return job",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [780, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receive YouTube link": { "main": [[{ "node": "Start clipping job", "type": "main", "index": 0 }]] },
+    "Start clipping job": { "main": [[{ "node": "Return job", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "c63ecc31-8950-4aaa-8000-312d85dab687",
+  "meta": { "templateCredsSetupCompleted": true },
+  "tags": []
+}
