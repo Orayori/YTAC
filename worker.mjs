@@ -758,7 +758,7 @@ async function renderClip(
     .replace(/'/g, "\\'");
 
   const filter =
-    `scale=1080:-2:` +
+    `scale=1080:1920:` +
     `force_original_aspect_ratio=increase,` +
     `crop=1080:1920,` +
     `setsar=1,` +
