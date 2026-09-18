@@ -819,10 +819,100 @@ async function renderClip(
     .replace(/:/g, '\\:')
     .replace(/'/g, "\\'");
 
+  /*
+   * Smart vertical framing
+   *
+   * smart_crop.py samples the clip, detects the
+   * speaker/face position, and calculates the best
+   * horizontal crop for a 1080x1920 video.
+   *
+   * If detection fails for any reason, the worker
+   * automatically falls back to the center crop.
+   */
+  let framing = {
+    scaleWidth: 1080,
+    scaleHeight: 1920,
+    cropX: 0,
+    cropY: 0,
+    focusX: 0.5,
+    facesDetected: false
+  };
+
+  try {
+    const smartCropOutput = await run(
+      'python',
+      [
+        'smart_crop.py',
+        video,
+        String(clip.start),
+        String(clip.end)
+      ],
+      directory
+    );
+
+    const detected =
+      JSON.parse(
+        smartCropOutput.trim()
+      );
+
+    if (
+      Number.isFinite(
+        Number(detected.scaleWidth)
+      ) &&
+      Number.isFinite(
+        Number(detected.scaleHeight)
+      ) &&
+      Number.isFinite(
+        Number(detected.cropX)
+      ) &&
+      Number.isFinite(
+        Number(detected.cropY)
+      )
+    ) {
+      framing = {
+        ...framing,
+        ...detected
+      };
+
+      console.log(
+        `Smart framing: ` +
+        `focusX=${detected.focusX}, ` +
+        `facesDetected=${detected.facesDetected}`
+      );
+    }
+  } catch (error) {
+    console.warn(
+      `Smart framing failed; ` +
+      `using center crop: ` +
+      error.message
+    );
+  }
+
   const filter =
-    `scale=1080:1920:` +
-    `force_original_aspect_ratio=increase,` +
-    `crop=1080:1920,` +
+    `scale=${Math.max(
+      1080,
+      Math.round(
+        framing.scaleWidth
+      )
+    )}:${Math.max(
+      1920,
+      Math.round(
+        framing.scaleHeight
+      )
+    )},` +
+    `crop=1080:1920:` +
+    `${Math.max(
+      0,
+      Math.round(
+        framing.cropX
+      )
+    )}:` +
+    `${Math.max(
+      0,
+      Math.round(
+        framing.cropY
+      )
+    )},` +
     `setsar=1,` +
     `ass='${escapedASS}'`;
 
